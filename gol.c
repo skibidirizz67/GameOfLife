@@ -4,28 +4,27 @@
 #include <string.h>
 
 #define MAP_W 1024
-#define MAP_H 1024
-#define MAP_S (MAP_W * MAP_H)
-#define MAP_SB ((MAP_S + 7) / 8)
+#define MAP_H MAP_W
+#define MAP_S (MAP_W*MAP_H)
+#define STEPS 1024
 
-uint8_t map_a[MAP_SB];
-uint8_t map_b[MAP_SB];
+uint8_t map_a[MAP_S];
+uint8_t map_b[MAP_S];
 
 uint8_t *curr;
 uint8_t *next;
 
 static inline void bit_init(size_t id) {
-    curr[id/8] |= (1<<(id%8));
+    curr[id] = 1;
 }
 static inline void bit_set(size_t id) {
-    next[id/8] |= (1<<(id%8));
+    next[id] = 1;
 }
 static inline void bit_clear(size_t id) {
-    next[id/8] &= ~(1<<(id%8));
+    next[id] = 0;
 }
-static inline uint8_t bit_get(size_t id) {
-    uint8_t cell = curr[id/8] & (1<<(id%8));
-    return cell != 0;
+static inline int bit_get(size_t id) {
+    return curr[id];
 }
 
 #define MIN(a, b) (a < b? a : b)
@@ -48,8 +47,8 @@ static inline int count_neighbours(int x, int y) {
 }
 
 void map_update() {
-    memset(next, 0, MAP_SB);
-    for (int y = 0; y < MAP_H; y++) {
+    memset(next, 0, sizeof(map_a));
+	for (int y = 0; y < MAP_H; y++) {
         for (int x = 0; x < MAP_W; x++) {
             size_t id = (size_t)(y*MAP_W + x);
             int n = count_neighbours(x, y);
@@ -87,7 +86,7 @@ int main() {
     bit_init(center+MAP_W);
     bit_init(center+MAP_W+1);
 
-    for (int step = 0; step < 1024; step++) {
+    for (int step = 0; step < STEPS; step++) {
         map_update();
         //map_draw();
 
