@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAP_W 16
-#define MAP_H 16
+#define MAP_W 1024
+#define MAP_H 1024
 #define MAP_S (MAP_W * MAP_H)
 #define MAP_SB ((MAP_S + 7) / 8)
 
@@ -28,8 +28,11 @@ static inline uint8_t bit_get(size_t id) {
     return cell != 0;
 }
 
+#define MIN(a, b) (a < b? a : b)
+#define MAX(a, b) (a > b? a : b)
+#define MMM(a, b, c) MIN(MAX(a, b), c)
 static inline int safe_neighbour(int x, int y) {
-    return (y+MAP_H)%MAP_H*MAP_W+(x+MAP_W)%MAP_W;
+    return MMM(y, 0, MAP_H)*MAP_W + MMM(x, 0, MAP_W);
 }
 static inline int count_neighbours(int x, int y) {
     int count = 0;
@@ -84,9 +87,9 @@ int main() {
     bit_init(center+MAP_W);
     bit_init(center+MAP_W+1);
 
-    for (int step = 0; step < 2; step++) {
+    for (int step = 0; step < 1024; step++) {
         map_update();
-        map_draw();
+        //map_draw();
 
         uint8_t *tmp = curr;
         curr = next;
