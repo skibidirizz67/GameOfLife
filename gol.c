@@ -1,99 +1,97 @@
 #include <stdio.h>
-#include <time.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
-#define W 16
-#define H 16
+#define MAP_W 16
+#define MAP_H 16
+#define MAP_S (MAP_W * MAP_H)
+#define MAP_SB ((MAP_S + 7) / 8)
 
-#define TPS 1
-const int DELAY = 1000 / TPS;
+uint8_t map_a[MAP_SB];
+uint8_t map_b[MAP_SB];
 
-char map[H*W];
-char tmp[H*W];
+uint8_t *curr;
+uint8_t *next;
 
-void sleep(int ms) {
-	struct timespec ts;
-	ts.tv_sec = ms / 1000;
-	ts.tv_nsec = (ms % 1000) * 1000000;
-	nanosleep(&ts, NULL);
+static inline void bit_init(size_t id) {
+    curr[id/8] |= (1<<(id%8));
+}
+static inline void bit_set(size_t id) {
+    next[id/8] |= (1<<(id%8));
+}
+static inline void bit_clear(size_t id) {
+    next[id/8] &= ~(1<<(id%8));
+}
+static inline uint8_t bit_get(size_t id) {
+    uint8_t cell = curr[id/8] & (1<<(id%8));
+    return cell != 0;
 }
 
-void init() {
-	for (int y = 0; y < H; y++) {
-		for (int x = 0; x < W; x++) {
-			map[y*W + x] = '.';
-		}
-	}
-
-	int center = H/2*W+W/2;
-	
-	map[center-1] = '#';
-	map[center] = '#';
-	map[center+1] = '#';
+static inline int safe_neighbour(int x, int y) {
+    return (y+MAP_H)%MAP_H*MAP_W+(x+MAP_W)%MAP_W;
+}
+static inline int count_neighbours(int x, int y) {
+    int count = 0;
+    if (bit_get(safe_neighbour(x-1, y-1))) count++;
+    if (bit_get(safe_neighbour(x, y-1))) count++;
+    if (bit_get(safe_neighbour(x+1, y-1))) count++;
+    if (bit_get(safe_neighbour(x-1, y))) count++;
+    if (bit_get(safe_neighbour(x+1, y))) count++;
+    if (bit_get(safe_neighbour(x-1, y+1))) count++;
+    if (bit_get(safe_neighbour(x, y+1))) count++;
+    if (bit_get(safe_neighbour(x+1, y+1))) count++;
+    return count;
 }
 
-void draw() {
-	char buffer[H*W+H+1];
-	for (int y = 0; y < (H+1); y++) {
-		for (int x = 0; x < W; x++) {
-			buffer[y*W + x] = '0';
-		}
-	}
-	
-	for (int y = 0; y < H; y++) {
-		for (int x = 0; x < W; x++) {
-			buffer[y*W+x+y] = map[y*W + x];
-		}
-		buffer[(y+1)*W+y] = '\n';
-	}
-	buffer[H*W] = '\0';
-	printf("%s\n", buffer);
+void map_update() {
+    memset(next, 0, MAP_SB);
+    for (int y = 0; y < MAP_H; y++) {
+        for (int x = 0; x < MAP_W; x++) {
+            size_t id = (size_t)(y*MAP_W + x);
+            int n = count_neighbours(x, y);
+            if (bit_get(id) && (n == 2 || n == 3)) bit_set(id);
+            else if (n == 3) bit_set(id);
+        }
+    }
 }
 
-int count_nbs(int id) {
-	int nbs = 0;
+void map_draw() {
+    char buffer[(MAP_W+1) * MAP_H + 1];
+    char *bp = buffer;
 
-	for (int y = -1; y < 2; y++) {
-		for (int x = -1; x < 2; x++) {
-			if (tmp[id+W*y+x] == '#') nbs++;
-		}
-	}
-	if (tmp[id] == '#') nbs--;
+    for (int y = 0; y < MAP_H; y++) {
+        for (int x = 0; x < MAP_W; x++) {
+            *bp++ = bit_get(y*MAP_W+x)==1? '#' : '.';
+        }
+        *bp++ = '\n';
+    }
+    *bp++ = '\0';
 
-	return nbs;
-}
-
-void update_cell(int id) {
-	int nbs = count_nbs(id);
-	if (map[id] == '.') {
-		if (nbs == 3) map[id] = '#';
-	}
-	else if (map[id] == '#') {
-		if (nbs < 2 || nbs > 4) map[id] = '.';
-	}
-	else {
-		map[id] = '.';
-	}
-}
-
-void update_map() {
-	strncpy(tmp, map, H*W);
-	for (int y = 0; y < H; y++) {
-		for (int x = 0; x < W; x++) {
-			update_cell(y*W+x);
-		}
-	}	
+    fwrite(buffer, 1, bp - buffer, stdout);
+    fflush(stdout);
 }
 
 int main() {
-	init();
+    curr = map_a;
+    next = map_b;
 
-	for (int i = 0; i < 2; i++) {
-		draw();
-		update_map();
+    int center = MAP_H/2*MAP_W+MAP_W/2;
 
-		//sleep(DELAY);
-	}
-		
-	return 0;
+    bit_init(center-MAP_W);
+    bit_init(center-1);
+    bit_init(center);
+    bit_init(center+MAP_W);
+    bit_init(center+MAP_W+1);
+
+    for (int step = 0; step < 2; step++) {
+        map_update();
+        map_draw();
+
+        uint8_t *tmp = curr;
+        curr = next;
+        next = tmp;
+    }
+    
+    return 0;
 }
