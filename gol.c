@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define MAP_W 1024
@@ -8,63 +7,39 @@
 #define MAP_S (MAP_W*MAP_H)
 #define STEPS 1024
 
-uint8_t map_a[MAP_S];
-uint8_t map_b[MAP_S];
+#define PW (MAP_W+2)
+#define PH (MAP_H+2)
+uint8_t map_a[PW*PH], map_b[PW*PH];
 
 uint8_t *curr;
 uint8_t *next;
 
-static inline void bit_init(size_t id) {
-    curr[id] = 1;
-}
-static inline void bit_set(size_t id) {
-    next[id] = 1;
-}
-static inline void bit_clear(size_t id) {
-    next[id] = 0;
-}
-static inline int bit_get(size_t id) {
-    return curr[id];
-}
-
-#define MIN(a, b) (a < b? a : b)
-#define MAX(a, b) (a > b? a : b)
-#define MMM(a, b, c) MIN(MAX(a, b), c)
-static inline int safe_neighbour(int x, int y) {
-    return MMM(y, 0, MAP_H)*MAP_W + MMM(x, 0, MAP_W);
-}
-static inline int count_neighbours(int x, int y) {
-    int count = 0;
-    if (bit_get(safe_neighbour(x-1, y-1))) count++;
-    if (bit_get(safe_neighbour(x, y-1))) count++;
-    if (bit_get(safe_neighbour(x+1, y-1))) count++;
-    if (bit_get(safe_neighbour(x-1, y))) count++;
-    if (bit_get(safe_neighbour(x+1, y))) count++;
-    if (bit_get(safe_neighbour(x-1, y+1))) count++;
-    if (bit_get(safe_neighbour(x, y+1))) count++;
-    if (bit_get(safe_neighbour(x+1, y+1))) count++;
-    return count;
-}
-
 void map_update() {
-    memset(next, 0, sizeof(map_a));
-	for (int y = 0; y < MAP_H; y++) {
-        for (int x = 0; x < MAP_W; x++) {
-            size_t id = (size_t)(y*MAP_W + x);
-            int n = count_neighbours(x, y);
-            if (bit_get(id) && (n == 2 || n == 3)) bit_set(id);
-            else if (n == 3) bit_set(id);
-        }
-    }
+	for (int y = 1; y <= MAP_H; ++y) {
+		int base_m1 = (y-1) * PW;
+		int base   = y * PW;
+		int base_p1 = (y+1) * PW;
+		for (int x = 1; x <= MAP_W; ++x) {
+			int n = map_a[base_m1 + (x-1)] + map_a[base_m1 + x] + map_a[base_m1 + (x+1)]
+				  + map_a[base   + (x-1)]                      + map_a[base   + (x+1)]
+				  + map_a[base_p1 + (x-1)] + map_a[base_p1 + x] + map_a[base_p1 + (x+1)];
+			int id = base + x;
+			if (map_a[id]) {
+				map_b[id] = (n == 2 || n == 3);
+			} else {
+				map_b[id] = (n == 3);
+			}
+		}
+	}
 }
 
 void map_draw() {
     char buffer[(MAP_W+1) * MAP_H + 1];
     char *bp = buffer;
 
-    for (int y = 0; y < MAP_H; y++) {
-        for (int x = 0; x < MAP_W; x++) {
-            *bp++ = bit_get(y*MAP_W+x)==1? '#' : '.';
+    for (int y = 1; y <= MAP_H; ++y) {
+        for (int x = 1; x <= MAP_W; ++x) {
+            *bp++ = curr[y*PW+x]? '#' : '.';
         }
         *bp++ = '\n';
     }
@@ -78,13 +53,13 @@ int main() {
     curr = map_a;
     next = map_b;
 
-    int center = MAP_H/2*MAP_W+MAP_W/2;
+    int center = PH/2*PW+PW/2;
 
-    bit_init(center-MAP_W);
-    bit_init(center-1);
-    bit_init(center);
-    bit_init(center+MAP_W);
-    bit_init(center+MAP_W+1);
+    curr[center-PW] = 1;
+    curr[center-1] = 1;
+    curr[center] = 1;
+    curr[center+PW] = 1;
+    curr[center+PW+1] = 1;
 
     for (int step = 0; step < STEPS; step++) {
         map_update();
