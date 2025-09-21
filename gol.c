@@ -4,31 +4,22 @@
 
 #define MAP_W 1024
 #define MAP_H MAP_W
-#define MAP_S (MAP_W*MAP_H)
-#define STEPS 1024
-
 #define PW (MAP_W+2)
 #define PH (MAP_H+2)
+#define STEPS 1024
+
 uint8_t map_a[PW*PH], map_b[PW*PH];
 
 uint8_t *curr;
 uint8_t *next;
 
 void map_update() {
-	for (int y = 1; y <= MAP_H; ++y) {
-		int base_m1 = (y-1) * PW;
-		int base   = y * PW;
-		int base_p1 = (y+1) * PW;
-		for (int x = 1; x <= MAP_W; ++x) {
-			int n = map_a[base_m1 + (x-1)] + map_a[base_m1 + x] + map_a[base_m1 + (x+1)]
-				  + map_a[base   + (x-1)]                      + map_a[base   + (x+1)]
-				  + map_a[base_p1 + (x-1)] + map_a[base_p1 + x] + map_a[base_p1 + (x+1)];
-			int id = base + x;
-			if (map_a[id]) {
-				map_b[id] = (n == 2 || n == 3);
-			} else {
-				map_b[id] = (n == 3);
-			}
+	for (int y = 1; y < MAP_H; y++) {
+		for (int x = 1; x < MAP_W; x++) {
+			int n = curr[(y-1)*PW+x-1] + curr[(y-1)*PW+x] + curr[(y-1)*PW+x+1]
+			      + curr[y*PW+x-1] + curr[y*PW+x+1]
+				  + curr[(y+1)*PW+x-1] + curr[(y+1)*PW+x] + curr[(y+1)*PW+x+1];
+			next[y*PW+x] = (n==3) | (curr[y*PW+x] & (n==2));
 		}
 	}
 }
