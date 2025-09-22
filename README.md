@@ -11,3 +11,4 @@
 ## TODO
 * cycled map
 * optimize drawing and bit arrays
+* add random map
